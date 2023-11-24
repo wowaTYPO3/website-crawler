@@ -1,0 +1,26 @@
+# Ignoriere alle .txt Dateien
+*.txt
+
+# macOS-spezifische Dateien und Ordner
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbnails
+._*
+
+# Dateien, die bei Mac-Festplattenchecks entstehen
+.Spotlight-V100
+.Trashes
+
+# Ordner, die von macOS erstellt werden, um temporär Dateien zu speichern
+.DocumentRevisions-V100
+.fseventsd
+
+# Zusätzliche versteckte Dateien und Ordner
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.vscode
+.idea
