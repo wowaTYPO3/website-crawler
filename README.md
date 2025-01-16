@@ -1,37 +1,38 @@
-# Website Crawler Skript
+# Website Crawler Script
 
-## Beschreibung
-Dieses Bash-Skript dient dazu, den Textinhalt von Webseiten rekursiv zu crawlen und in einer Textdatei zu speichern. Es fragt den Benutzer nach einer URL und einer maximalen Tiefe für das Crawling, lädt dann die Webseite und alle verbundenen Seiten bis zur angegebenen Tiefe herunter und konvertiert den Inhalt in reinen Text.
+## Description
+This Bash script is designed to recursively crawl the text content of web pages and save it to a text file. It prompts the user for a URL and a maximum depth for crawling, then downloads the website and all linked pages up to the specified depth, converting the content into plain text.
 
-## Funktionsweise
-- Das Skript fragt interaktiv nach der URL der zu crawlenden Webseite und der maximalen Crawling-Tiefe.
-- Es lädt alle Seiten der angegebenen Domain bis zur festgelegten Tiefe herunter.
-- Der reine Textinhalt dieser Seiten wird extrahiert und in einer Textdatei gespeichert.
-- Die erzeugte Textdatei enthält den Namen der Domain und das aktuelle Datum.
-- Nach dem Crawlen und Extrahieren der Inhalte wird das Verzeichnis mit den heruntergeladenen HTML-Dateien gelöscht.
+## How It Works
+- The script interactively prompts for the URL of the website to crawl and the maximum crawling depth.
+- It downloads all pages of the specified domain up to the defined depth.
+- The plain text content of these pages is extracted and saved to a text file.
+- The generated text file includes the domain name and the current date.
+- After crawling and extracting the content, the directory containing the downloaded HTML files is deleted.
 
-## Voraussetzungen
-Um das Skript auf einem Mac zu verwenden, sind folgende Schritte erforderlich:
+## Prerequisites
+The script was developed and tested on MacOS. To ensure that it works, the tools wget and pandoc must be installed.  
+To use the script on a Mac, the following steps are required:
 
-1. **Installieren von Homebrew**:
-   - Öffne das Terminal und führe `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` aus, um Homebrew zu installieren.
+1. **Install Homebrew**:
+    - Open the Terminal and run `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` to install Homebrew.
 
-2. **Installieren von Wget**:
-   - Nach der Installation von Homebrew gib `brew install wget` ein, um Wget zu installieren.
+2. **Install Wget**:
+    - After installing Homebrew, enter `brew install wget` to install Wget.
 
-3. **Installieren von Pandoc**:
-   - Führe `brew install pandoc` aus, um Pandoc zu installieren. Pandoc wird benötigt, um HTML-Inhalte in reinen Text zu konvertieren.
+3. **Install Pandoc**:
+    - Run `brew install pandoc` to install Pandoc. Pandoc is required to convert HTML content into plain text.
 
-## Verwendung
-1. **Klonen des Repositorys**:
-   - Verwende `git clone [Repository-URL]`, um das Repository zu klonen, das dieses Skript enthält.
+## Usage
+1. **Clone the Repository**:
+    - Use `git clone [Repository-URL]` to clone the repository containing this script.
 
-2. **Ausführen des Skripts**:
-   - Öffne das Terminal und navigiere zum Verzeichnis des Skripts.
-   - Gib `chmod +x website_crawler.sh` ein, um das Skript ausführbar zu machen.
-   - Starte das Skript mit `./website_crawler.sh`.
-   - Folge den Anweisungen im Terminal, um die URL und die maximale Crawling-Tiefe einzugeben.
+2. **Run the Script**:
+    - Open the Terminal and navigate to the script directory.
+    - Enter `chmod +x website_crawler.sh` to make the script executable.
+    - Start the script with `./website_crawler.sh`.
+    - Follow the instructions in the Terminal to input the URL and the maximum crawling depth.
 
-## Hinweis
-- Stelle sicher, dass du die Erlaubnis hast, den Inhalt der Ziel-Webseite zu crawlen.
-- Beachte die Datei `robots.txt` der Ziel-Webseite, die Anweisungen zum Crawlen enthält.
+## Note
+- Ensure you have permission to crawl the content of the target website.
+- Observe the `robots.txt` file of the target website, which may contain guidelines for crawling.
