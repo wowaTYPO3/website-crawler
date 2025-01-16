@@ -1,48 +1,88 @@
 #!/bin/bash
 
-# URL und maximale Tiefe interaktiv abfragen
-read -p "Bitte geben Sie die URL ein: " URL
-read -p "Bitte geben Sie die maximale Tiefe ein (Standard ist 1): " MAX_DEPTH
-MAX_DEPTH=${MAX_DEPTH:-1}
+# --- Funktion: Prüfe, ob ein bestimmtes Programm installiert ist ---
+function check_command() {
+  command -v "$1" &>/dev/null
+}
 
-# Protokoll und Schrägstriche hinzufügen, falls nicht vorhanden
-if ! [[ $URL =~ ^https?:// ]]; then
-    URL="http://$URL"
+# --- Wichtige Tools checken ---
+missing_tools=()
+
+if ! check_command "wget"; then
+  missing_tools+=("wget")
 fi
 
-# Basisdomain extrahieren für den Dateinamen
-base_domain=$(echo "$URL" | awk -F/ '{print $3}' | sed 's/[^a-zA-Z0-9]//g')
+if ! check_command "pandoc"; then
+  missing_tools+=("pandoc")
+fi
 
-# Überprüfen, ob die Basisdomain extrahiert wurde
-if [ -z "$base_domain" ]; then
-  echo "Fehler beim Extrahieren der Domain aus der URL. Bitte überprüfen Sie die URL."
+if [ ${#missing_tools[@]} -ne 0 ]; then
+  echo "Fehlende Tools: ${missing_tools[*]}"
+  echo "Bitte installiere die oben genannten Befehle, bevor du fortfährst."
   exit 1
 fi
 
-# Aktuelles Datum für den Dateinamen
+# --- URL und Tiefe abfragen ---
+read -p "Gib die URL an: " URL
+read -p "Gib die maximale Tiefe ein (Standard: 1): " MAX_DEPTH
+MAX_DEPTH=${MAX_DEPTH:-1}
+
+# --- URL auf Protokoll prüfen ---
+if ! [[ $URL =~ ^https?:// ]]; then
+  URL="http://$URL"
+fi
+
+# --- Optional: Teste Erreichbarkeit via spider ---
+echo "Prüfe Erreichbarkeit der Seite..."
+if ! wget --spider --quiet "$URL"; then
+  echo "URL scheint nicht erreichbar zu sein. Bitte überprüfe die Eingabe."
+  exit 1
+fi
+
+# --- Basisdomain extrahieren ---
+base_domain=$(echo "$URL" | awk -F/ '{print $3}' | sed 's/[^a-zA-Z0-9]//g')
+if [ -z "$base_domain" ]; then
+  echo "Fehler beim Extrahieren der Domain. Bitte checke deine URL."
+  exit 1
+fi
+
+# --- Dateiname ---
 current_date=$(date +"%Y-%m-%d")
-
-# Verzeichnis für heruntergeladene Inhalte
-download_dir="downloaded_content"
-
-# Ausgabedatei
 output_file="${base_domain}_${current_date}.txt"
 
-# Verzeichnis vorbereiten
+# --- Verzeichnis für Downloads ---
+download_dir="downloaded_content"
 mkdir -p "$download_dir"
+
+# --- Trap einrichten, um auch bei Abbruch aufzuräumen ---
+trap "rm -rf '$download_dir'; echo 'Downloads wurden aufgeräumt.'; exit 1" INT TERM
+
+# --- Lege die Ausgabedatei an (vorher leeren) ---
 > "$output_file"
 
-# Die Webseite rekursiv herunterladen
-echo "Lade Webseiten herunter..."
-wget --recursive --level="$MAX_DEPTH" --convert-link --reject "index.html*,*.png,*.jpg,*.jpeg,*.gif,*.css,*.js,*.pdf,*.mp4" --no-parent --html-extension --restrict-file-names=windows --directory-prefix="$download_dir" "$URL"
+# --- Starte den Download ---
+echo "Lade Inhalte herunter..."
+wget \
+  --recursive \
+  --level="$MAX_DEPTH" \
+  --convert-links \
+  --reject="index.html*,*.png,*.jpg,*.webp.*.jpeg,*.gif,*.css,*.js,*.pdf,*.mp4" \
+  --no-parent \
+  --html-extension \
+  --restrict-file-names=windows \
+  --directory-prefix="$download_dir" \
+  --user-agent="Mozilla/5.0 (compatible; MyCustomCrawler/1.0)" \
+  --wait=1 \
+  --random-wait \
+  "$URL"
 
-# Alle heruntergeladenen HTML-Dateien verarbeiten
-echo "Verarbeite heruntergeladene Inhalte..."
-find "$download_dir" -name '*.html' | while read file; do
+# --- HTML-Dateien einsammeln ---
+echo "Verarbeite HTML-Dateien mit pandoc..."
+find "$download_dir" -type f -name '*.html' | while read file; do
   pandoc -s -f html -t plain "$file" >> "$output_file"
 done
 
-# Verzeichnis mit heruntergeladenen Inhalten löschen
+# --- Downloads löschen ---
 rm -rf "$download_dir"
 
-echo "Der reine Inhalt wurde in $output_file gespeichert."
+echo "Fertig. Du findest den Textinhalt in der Datei '$output_file'."
