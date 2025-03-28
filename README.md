@@ -12,6 +12,21 @@ This Bash script is designed to recursively crawl the text content of web pages 
 - Automatic cleanup on interruption
 - Detailed error handling and reporting
 
+## System Requirements
+This script is designed for Unix-like systems (Linux, macOS). For Windows users, there are several options:
+
+1. **Use Windows Subsystem for Linux (WSL)**:
+   - Install WSL from the Microsoft Store
+   - Follow the Linux installation instructions below
+
+2. **Use Git Bash**:
+   - Install Git for Windows which includes Git Bash
+   - Follow the Linux installation instructions below
+
+3. **Use Cygwin**:
+   - Install Cygwin with the required packages
+   - Follow the Linux installation instructions below
+
 ## How It Works
 - The script loads configuration from `crawler_config.conf`
 - It interactively prompts for the URL of the website to crawl
@@ -23,9 +38,9 @@ This Bash script is designed to recursively crawl the text content of web pages 
 - Automatically cleans up temporary files after completion
 
 ## Prerequisites
-The script was developed and tested on MacOS. To ensure that it works, the tools wget and pandoc must be installed.  
-To use the script on a Mac, the following steps are required:
+The script requires the following tools to be installed:
 
+### For macOS:
 1. **Install Homebrew**:
     - Open the Terminal and run `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` to install Homebrew.
 
@@ -34,6 +49,19 @@ To use the script on a Mac, the following steps are required:
 
 3. **Install Pandoc**:
     - Run `brew install pandoc` to install Pandoc. Pandoc is required to convert HTML content into plain text.
+
+### For Linux:
+1. **Install Wget**:
+    ```bash
+    sudo apt-get install wget  # For Debian/Ubuntu
+    sudo yum install wget      # For RHEL/CentOS
+    ```
+
+2. **Install Pandoc**:
+    ```bash
+    sudo apt-get install pandoc  # For Debian/Ubuntu
+    sudo yum install pandoc      # For RHEL/CentOS
+    ```
 
 ## Configuration
 The script uses a configuration file `crawler_config.conf` for various settings:
