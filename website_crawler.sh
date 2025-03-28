@@ -44,6 +44,85 @@ function process_html_file() {
   fi
 }
 
+# --- Funktion: Extrahiere Domain aus URL ---
+function extract_domain() {
+  local url=$1
+  echo "$url" | awk -F/ '{print $3}'
+}
+
+# --- Funktion: Lade robots.txt ---
+function load_robots_txt() {
+  local domain=$1
+  local robots_url="https://${domain}/robots.txt"
+  local robots_file="$download_dir/robots.txt"
+  
+  echo "Lade robots.txt von $domain..."
+  if ! wget --quiet --timeout="$TIMEOUT" --connect-timeout="$CONNECT_TIMEOUT" "$robots_url" -O "$robots_file"; then
+    echo "Warnung: robots.txt konnte nicht geladen werden."
+    return 1
+  fi
+  
+  # Erstelle temporäre Datei für die Regeln
+  local rules_file="$download_dir/robots_rules.txt"
+  > "$rules_file"
+  
+  # Verarbeite robots.txt
+  local in_user_agent=false
+  while IFS= read -r line; do
+    # Überspringe Kommentare und Leerzeilen
+    [[ $line =~ ^#.*$ ]] && continue
+    [[ -z $line ]] && continue
+    
+    # Prüfe auf User-agent
+    if [[ $line =~ ^User-agent:.* ]]; then
+      if [[ $line =~ ^User-agent:\ *\* ]]; then
+        in_user_agent=true
+      else
+        in_user_agent=false
+      fi
+    fi
+    
+    # Wenn wir im richtigen User-agent Block sind, verarbeite Disallow-Regeln
+    if [[ $in_user_agent == true ]] && [[ $line =~ ^Disallow:.* ]]; then
+      local path=${line#Disallow: }
+      # Entferne führende Leerzeichen
+      path=$(echo "$path" | sed 's/^[[:space:]]*//')
+      # Wenn der Pfad leer ist, überspringe
+      [[ -z $path ]] && continue
+      # Escapen Sie spezielle Zeichen für den regulären Ausdruck
+      path=$(echo "$path" | sed 's/[.*+?^${}()|[]/\\&/g')
+      # Füge die Regel zur Datei hinzu
+      echo "$path" >> "$rules_file"
+    fi
+  done < "$robots_file"
+  
+  # Wenn keine Regeln gefunden wurden, lösche die Datei
+  if [[ ! -s "$rules_file" ]]; then
+    rm -f "$rules_file"
+  fi
+}
+
+# --- Funktion: Prüfe, ob eine URL erlaubt ist ---
+function is_url_allowed() {
+  local url=$1
+  local rules_file="$download_dir/robots_rules.txt"
+  
+  # Wenn keine Regeln existieren, ist alles erlaubt
+  [[ ! -f "$rules_file" ]] && return 0
+  
+  # Extrahiere den Pfad aus der URL
+  local path=$(echo "$url" | awk -F/ '{print $4"/"$5"/"$6"/"$7"/"$8"/"$9"/"$10}')
+  
+  # Prüfe jede Regel
+  while IFS= read -r rule; do
+    if [[ $path == *"$rule"* ]]; then
+      return 1
+    fi
+  done < "$rules_file"
+  
+  return 0
+}
+
 # --- Wichtige Tools checken ---
 missing_tools=()
 
@@ -79,7 +158,7 @@ if ! wget --spider --quiet --timeout="$TIMEOUT" --connect-timeout="$CONNECT_TIME
 fi
 
 # --- Basisdomain extrahieren ---
-base_domain=$(echo "$URL" | awk -F/ '{print $3}' | sed 's/[^a-zA-Z0-9]//g')
+base_domain=$(extract_domain "$URL")
 if [ -z "$base_domain" ]; then
   handle_error "Fehler beim Extrahieren der Domain. Bitte checke deine URL."
 fi
@@ -98,6 +177,9 @@ trap "rm -rf '$download_dir'; echo 'Downloads wurden aufgeräumt.'; exit 1" INT 
 # --- Lege die Ausgabedatei an (vorher leeren) ---
 > "$output_file" || handle_error "Konnte Ausgabedatei nicht erstellen."
 
+# --- Lade robots.txt ---
+load_robots_txt "$base_domain"
+
 # --- Starte den Download ---
 echo "Lade Inhalte herunter..."
 if ! wget \
@@ -115,6 +197,7 @@ if ! wget \
   --timeout="$TIMEOUT" \
   --connect-timeout="$CONNECT_TIMEOUT" \
   --progress=dot:giga \
+  $(if [ -f "$download_dir/robots_rules.txt" ]; then echo "--reject-regex=\"$(cat "$download_dir/robots_rules.txt" | tr '\n' '|' | sed 's/|$//')\""; fi) \
   "$URL"; then
   handle_error "Download fehlgeschlagen."
 fi

@@ -1,7 +1,7 @@
 # Website Crawler Script
 
 ## Description
-This Bash script is designed to recursively crawl the text content of web pages and save it to a text file. It prompts the user for a URL and optionally allows setting a maximum depth for crawling. The script downloads the website and all linked pages up to the specified depth, converting the content into plain text. It features parallel processing, configurable timeouts, and progress tracking.
+This Bash script is designed to recursively crawl the text content of web pages and save it to a text file. It prompts the user for a URL and optionally allows setting a maximum depth for crawling. The script downloads the website and all linked pages up to the specified depth, converting the content into plain text. It features parallel processing, configurable timeouts, progress tracking, and automatic robots.txt compliance.
 
 ## Features
 - Recursive website crawling with configurable depth
@@ -11,6 +11,8 @@ This Bash script is designed to recursively crawl the text content of web pages 
 - Progress tracking during processing
 - Automatic cleanup on interruption
 - Detailed error handling and reporting
+- Automatic robots.txt compliance
+- Respects website crawling rules and restrictions
 
 ## System Requirements
 This script is designed for Unix-like systems (Linux, macOS). For Windows users, there are several options:
@@ -31,7 +33,9 @@ This script is designed for Unix-like systems (Linux, macOS). For Windows users,
 - The script loads configuration from `crawler_config.conf`
 - It interactively prompts for the URL of the website to crawl
 - Optionally allows setting a custom crawling depth (defaults to configuration value)
-- Downloads all pages of the specified domain up to the defined depth
+- Downloads and processes the website's robots.txt file
+- Respects crawling rules specified in robots.txt
+- Downloads all allowed pages of the specified domain up to the defined depth
 - Processes HTML files in parallel for better performance
 - Extracts and saves plain text content to a text file
 - The generated text file includes the domain name and the current date
@@ -72,7 +76,7 @@ The script uses a configuration file `crawler_config.conf` for various settings:
 - `WAIT_TIME`: Wait time between downloads (default: 1 second)
 - `RANDOM_WAIT`: Random wait time (default: 1 second)
 - `MAX_PARALLEL_JOBS`: Maximum number of parallel processes (default: 4)
-- `USER_AGENT`: User agent for requests
+- `USER_AGENT`: User agent for requests (used for robots.txt compliance)
 - `REJECT_PATTERNS`: File types to ignore
 - `OUTPUT_DIR`: Output directory (default: "output")
 
@@ -94,11 +98,14 @@ The script includes comprehensive error handling:
 - Checks for missing dependencies
 - Validates input URL
 - Tests website accessibility
+- Handles robots.txt loading failures gracefully
 - Performs automatic cleanup on interruption
 - Provides detailed error messages
 
 ## Notes
 - Ensure you have permission to crawl the content of the target website.
-- Observe the `robots.txt` file of the target website, which may contain guidelines for crawling.
+- The script automatically reads and respects the website's robots.txt file.
+- If robots.txt cannot be loaded, the script will continue with default settings.
 - The script automatically creates an output directory if it doesn't exist.
 - Temporary files are automatically cleaned up, even if the script is interrupted.
+- The User-Agent setting in the configuration file is used for robots.txt compliance.
