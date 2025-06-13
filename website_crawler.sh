@@ -35,13 +35,65 @@ function load_config() {
   mkdir -p "$OUTPUT_DIR" || handle_error "Konnte Ausgabeverzeichnis nicht erstellen."
 }
 
-# --- Funktion: Verarbeite eine einzelne HTML-Datei ---
-function process_html_file() {
+# --- Funktion: Rekonstruiere ursprüngliche URL aus Dateipfad ---
+function reconstruct_url() {
+  local file=$1
+  local download_dir=$2
+
+  # Entferne Download-Verzeichnis-Präfix
+  local relative_path=${file#$download_dir/}
+
+  # Behandle spezielle Fälle
+  case "$relative_path" in
+    */index.html)
+      # index.html -> Verzeichnis-URL
+      relative_path=${relative_path%/index.html}
+      ;;
+    *.html)
+      # Entferne .html-Endung
+      relative_path=${relative_path%.html}
+      ;;
+  esac
+
+  # Konstruiere vollständige URL
+  if [[ $relative_path == */* ]]; then
+    echo "https://$relative_path"
+  else
+    echo "https://$relative_path/"
+  fi
+}
+
+# --- Funktion: Verarbeite eine einzelne HTML-Datei mit strukturierter Ausgabe ---
+function process_html_file_structured() {
   local file=$1
   local output_file=$2
-  if ! pandoc -s -f html -t plain "$file" >> "$output_file"; then
-    echo "Fehler bei der Konvertierung von $file" >&2
-  fi
+  local download_dir=$3
+
+  # Rekonstruiere die ursprüngliche URL
+  local original_url=$(reconstruct_url "$file" "$download_dir")
+
+  # Schreibe strukturierte Header mit Thread-Safety
+  local temp_file=$(mktemp)
+  {
+    echo "###"
+    echo "$original_url"
+    echo ""
+
+    # Konvertiere HTML zu Text
+    if pandoc -s -f html -t plain "$file" 2>/dev/null; then
+      echo ""
+    else
+      echo "Fehler bei der Konvertierung dieser Seite"
+      echo ""
+    fi
+
+    echo "###"
+    echo ""
+  } > "$temp_file"
+
+  # Füge sicher zur Hauptdatei hinzu (Thread-safe)
+  cat "$temp_file" >> "$output_file"
+  rm "$temp_file"
 }
 
 # --- Funktion: Extrahiere Domain aus URL ---
@@ -174,9 +226,6 @@ mkdir -p "$download_dir" || handle_error "Konnte Download-Verzeichnis nicht erst
 # --- Trap einrichten, um auch bei Abbruch aufzuräumen ---
 trap "rm -rf '$download_dir'; echo 'Downloads wurden aufgeräumt.'; exit 1" INT TERM
 
-# --- Lege die Ausgabedatei an (vorher leeren) ---
-> "$output_file" || handle_error "Konnte Ausgabedatei nicht erstellen."
-
 # --- Lade robots.txt ---
 load_robots_txt "$base_domain"
 
@@ -210,6 +259,17 @@ fi
 
 # --- HTML-Dateien einsammeln und parallel verarbeiten ---
 echo -e "\nVerarbeite HTML-Dateien mit pandoc..."
+
+# Erstelle Header für die Ausgabedatei
+{
+  echo "======================================================"
+  echo "Website Crawl Ergebnisse für: $base_domain"
+  echo "Erstellt am: $(date '+%Y-%m-%d %H:%M:%S')"
+  echo "Maximale Tiefe: $MAX_DEPTH"
+  echo "======================================================"
+  echo ""
+} > "$output_file"
+
 html_files=($(find "$download_dir" -type f -name '*.html'))
 total_files=${#html_files[@]}
 current_file=0
@@ -227,8 +287,8 @@ for file in "${html_files[@]}"; do
     sleep 0.1
   done
 
-  # Starte die Verarbeitung im Hintergrund
-  process_html_file "$file" "$output_file" &
+  # Starte die strukturierte Verarbeitung im Hintergrund
+  process_html_file_structured "$file" "$output_file" "$download_dir" &
 
   # Speichere die Job-ID
   echo $! >> "$temp_jobs_file"
@@ -242,5 +302,14 @@ done < "$temp_jobs_file"
 # Lösche temporäre Datei
 rm -f "$temp_jobs_file"
 
-echo -e "\nFertig. Du findest den Textinhalt in der Datei '$output_file'."
+# Füge Abschluss-Footer hinzu
+{
+  echo ""
+  echo "======================================================"
+  echo "Ende des Crawl-Ergebnisses"
+  echo "Verarbeitete Dateien: $total_files"
+  echo "======================================================"
+} >> "$output_file"
+
+echo -e "\nFertig. Du findest den strukturierten Textinhalt in der Datei '$output_file'."
 rm -rf "$download_dir"
