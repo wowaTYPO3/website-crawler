@@ -27,10 +27,10 @@ function load_config() {
   if [ ! -f "$config_file" ]; then
     handle_error "Konfigurationsdatei '$config_file' nicht gefunden."
   fi
-  
+
   # Lade Konfiguration
   source "$config_file"
-  
+
   # Erstelle Ausgabeverzeichnis
   mkdir -p "$OUTPUT_DIR" || handle_error "Konnte Ausgabeverzeichnis nicht erstellen."
 }
@@ -55,24 +55,24 @@ function load_robots_txt() {
   local domain=$1
   local robots_url="https://${domain}/robots.txt"
   local robots_file="$download_dir/robots.txt"
-  
+
   echo "Lade robots.txt von $domain..."
   if ! wget --quiet --timeout="$TIMEOUT" --connect-timeout="$CONNECT_TIMEOUT" "$robots_url" -O "$robots_file"; then
     echo "Warnung: robots.txt konnte nicht geladen werden."
     return 1
   fi
-  
+
   # Erstelle temporäre Datei für die Regeln
   local rules_file="$download_dir/robots_rules.txt"
   > "$rules_file"
-  
+
   # Verarbeite robots.txt
   local in_user_agent=false
   while IFS= read -r line; do
     # Überspringe Kommentare und Leerzeilen
     [[ $line =~ ^#.*$ ]] && continue
     [[ -z $line ]] && continue
-    
+
     # Prüfe auf User-agent
     if [[ $line =~ ^User-agent:.* ]]; then
       if [[ $line =~ ^User-agent:\ *\* ]]; then
@@ -81,7 +81,7 @@ function load_robots_txt() {
         in_user_agent=false
       fi
     fi
-    
+
     # Wenn wir im richtigen User-agent Block sind, verarbeite Disallow-Regeln
     if [[ $in_user_agent == true ]] && [[ $line =~ ^Disallow:.* ]]; then
       local path=${line#Disallow: }
@@ -95,7 +95,7 @@ function load_robots_txt() {
       echo "$path" >> "$rules_file"
     fi
   done < "$robots_file"
-  
+
   # Wenn keine Regeln gefunden wurden, lösche die Datei
   if [[ ! -s "$rules_file" ]]; then
     rm -f "$rules_file"
@@ -106,20 +106,20 @@ function load_robots_txt() {
 function is_url_allowed() {
   local url=$1
   local rules_file="$download_dir/robots_rules.txt"
-  
+
   # Wenn keine Regeln existieren, ist alles erlaubt
   [[ ! -f "$rules_file" ]] && return 0
-  
+
   # Extrahiere den Pfad aus der URL
   local path=$(echo "$url" | awk -F/ '{print $4"/"$5"/"$6"/"$7"/"$8"/"$9"/"$10}')
-  
+
   # Prüfe jede Regel
   while IFS= read -r rule; do
     if [[ $path == *"$rule"* ]]; then
       return 1
     fi
   done < "$rules_file"
-  
+
   return 0
 }
 
@@ -182,24 +182,30 @@ load_robots_txt "$base_domain"
 
 # --- Starte den Download ---
 echo "Lade Inhalte herunter..."
-if ! wget \
-  --recursive \
-  --level="$MAX_DEPTH" \
-  --convert-links \
-  --reject="$REJECT_PATTERNS" \
-  --no-parent \
-  --html-extension \
-  --restrict-file-names=windows \
-  --directory-prefix="$download_dir" \
-  --user-agent="$USER_AGENT" \
-  --wait="$WAIT_TIME" \
-  --random-wait="$RANDOM_WAIT" \
-  --timeout="$TIMEOUT" \
-  --connect-timeout="$CONNECT_TIMEOUT" \
-  --progress=dot:giga \
-  $(if [ -f "$download_dir/robots_rules.txt" ]; then echo "--reject-regex=\"$(cat "$download_dir/robots_rules.txt" | tr '\n' '|' | sed 's/|$//')\""; fi) \
-  "$URL"; then
-  handle_error "Download fehlgeschlagen."
+
+# Baue wget-Befehl auf
+wget_cmd="wget --recursive --level=\"$MAX_DEPTH\" --convert-links --reject=\"$REJECT_PATTERNS\" --no-parent --html-extension --restrict-file-names=windows --directory-prefix=\"$download_dir\" --user-agent=\"$USER_AGENT\" --wait=\"$WAIT_TIME\" --random-wait=\"$RANDOM_WAIT\" --timeout=\"$TIMEOUT\" --connect-timeout=\"$CONNECT_TIMEOUT\" --progress=dot:giga"
+
+# Füge robots.txt-Regeln hinzu, falls vorhanden
+if [ -f "$download_dir/robots_rules.txt" ] && [ -s "$download_dir/robots_rules.txt" ]; then
+    reject_regex=$(cat "$download_dir/robots_rules.txt" | tr '\n' '|' | sed 's/|$//')
+    if [ -n "$reject_regex" ]; then
+        wget_cmd="$wget_cmd --reject-regex=\"$reject_regex\""
+    fi
+fi
+
+# Führe wget aus
+if eval "$wget_cmd \"$URL\""; then
+    echo "Download erfolgreich abgeschlossen."
+else
+    # Prüfe, ob trotz Exit-Code Dateien heruntergeladen wurden
+    downloaded_files=$(find "$download_dir" -name "*.html" | wc -l)
+    if [ "$downloaded_files" -gt 0 ]; then
+        echo "Warnung: wget meldete einen Fehler, aber $downloaded_files Dateien wurden heruntergeladen."
+        echo "Fahre mit der Verarbeitung fort..."
+    else
+        handle_error "Download fehlgeschlagen - keine Dateien heruntergeladen."
+    fi
 fi
 
 # --- HTML-Dateien einsammeln und parallel verarbeiten ---
@@ -215,15 +221,15 @@ temp_jobs_file=$(mktemp)
 for file in "${html_files[@]}"; do
   ((current_file++))
   show_progress $current_file $total_files
-  
+
   # Starte neuen Job, wenn die maximale Anzahl erreicht ist
   while [ $(jobs -p | wc -l) -ge "$MAX_PARALLEL_JOBS" ]; do
     sleep 0.1
   done
-  
+
   # Starte die Verarbeitung im Hintergrund
   process_html_file "$file" "$output_file" &
-  
+
   # Speichere die Job-ID
   echo $! >> "$temp_jobs_file"
 done
