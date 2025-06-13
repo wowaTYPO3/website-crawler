@@ -1,9 +1,11 @@
 # Website Crawler Script
 
 ## Description
+
 This Bash script is designed to recursively crawl the text content of web pages and save it to a structured text file. It prompts the user for a URL and optionally allows setting a maximum depth for crawling. The script downloads the website and all linked pages up to the specified depth, converting the content into plain text with clear URL separation. It features parallel processing, configurable timeouts, progress tracking, and automatic robots.txt compliance.
 
 ## Features
+
 - Recursive website crawling with configurable depth
 - Parallel processing of HTML files
 - Structured HTML to plain text conversion with URL headers
@@ -17,21 +19,24 @@ This Bash script is designed to recursively crawl the text content of web pages 
 - Thread-safe parallel processing with structured output
 
 ## System Requirements
+
 This script is designed for Unix-like systems (Linux, macOS). For Windows users, there are several options:
 
 1. **Use Windows Subsystem for Linux (WSL)**:
+
    - Install WSL from the Microsoft Store
    - Follow the Linux installation instructions below
-
 2. **Use Git Bash**:
+
    - Install Git for Windows which includes Git Bash
    - Follow the Linux installation instructions below
-
 3. **Use Cygwin**:
+
    - Install Cygwin with the required packages
    - Follow the Linux installation instructions below
 
 ## How It Works
+
 - The script loads configuration from `crawler_config.conf`
 - It interactively prompts for the URL of the website to crawl
 - Optionally allows setting a custom crawling depth (defaults to configuration value)
@@ -46,7 +51,9 @@ This script is designed for Unix-like systems (Linux, macOS). For Windows users,
 - Automatically cleans up temporary files after completion
 
 ## Output Format
+
 The script generates a structured text file with the following format:
+
 ```
 ====================================================== 
 Website Crawl Ergebnisse für: example.com 
@@ -71,42 +78,50 @@ Maximale Tiefe: 1
 ### 
 ====================================================== 
 Ende des Crawl-Ergebnisses 
-Verarbeitete Dateien: 25 ======================================================
+Verarbeitete Dateien: 25  
+======================================================
 
 ```
 
 This structure makes it easy to:
+
 - Identify which content belongs to which URL
 - Navigate through the extracted content
 - Analyze specific pages within the crawled website
 
 ## Prerequisites
+
 The script requires the following tools to be installed:
 
 ### For macOS:
+
 1. **Install Homebrew**:
-    - Open the Terminal and run `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` to install Homebrew.
 
+   - Open the Terminal and run `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` to install Homebrew.
 2. **Install Wget**:
-    - After installing Homebrew, enter `brew install wget` to install Wget.
 
+   - After installing Homebrew, enter `brew install wget` to install Wget.
 3. **Install Pandoc**:
-    - Run `brew install pandoc` to install Pandoc. Pandoc is required to convert HTML content into plain text.
+
+   - Run `brew install pandoc` to install Pandoc. Pandoc is required to convert HTML content into plain text.
 
 ### For Linux:
-1. **Install Wget**:
-    ```bash
-    sudo apt-get install wget  # For Debian/Ubuntu
-    sudo yum install wget      # For RHEL/CentOS
-    ```
 
+1. **Install Wget**:
+
+   ```bash
+   sudo apt-get install wget  # For Debian/Ubuntu
+   sudo yum install wget      # For RHEL/CentOS
+   ```
 2. **Install Pandoc**:
-    ```bash
-    sudo apt-get install pandoc  # For Debian/Ubuntu
-    sudo yum install pandoc      # For RHEL/CentOS
-    ```
+
+   ```bash
+   sudo apt-get install pandoc  # For Debian/Ubuntu
+   sudo yum install pandoc      # For RHEL/CentOS
+   ```
 
 ## Configuration
+
 The script uses a configuration file `crawler_config.conf` for various settings:
 
 - `TIMEOUT`: Overall download timeout (default: 30 seconds)
@@ -120,20 +135,24 @@ The script uses a configuration file `crawler_config.conf` for various settings:
 - `OUTPUT_DIR`: Output directory (default: "output")
 
 ## Usage
-1. **Clone the Repository**:
-    - Use `git clone [Repository-URL]` to clone the repository containing this script.
 
+1. **Clone the Repository**:
+
+   - Use `git clone [Repository-URL]` to clone the repository containing this script.
 2. **Run the Script**:
-    - Open the Terminal and navigate to the script directory.
-    - Enter `chmod +x website_crawler.sh` to make the script executable.
-    - Start the script with `./website_crawler.sh`.
-    - Enter the URL when prompted
-    - Optionally enter a custom crawling depth (press Enter for default)
+
+   - Open the Terminal and navigate to the script directory.
+   - Enter `chmod +x website_crawler.sh` to make the script executable.
+   - Start the script with `./website_crawler.sh`.
+   - Enter the URL when prompted
+   - Optionally enter a custom crawling depth (press Enter for default)
 
 The output file will be saved as `[domain]_[date].txt` in the configured output directory with structured content formatting.
 
 ## Error Handling
+
 The script includes comprehensive error handling:
+
 - Checks for missing dependencies
 - Validates input URL
 - Tests website accessibility
@@ -143,6 +162,7 @@ The script includes comprehensive error handling:
 - Thread-safe processing prevents data corruption during parallel execution
 
 ## Technical Features
+
 - URL Reconstruction: Automatically reconstructs original URLs from downloaded file paths
 - Structured Output: Each page's content is clearly separated with URL headers
 - Thread-Safe Processing: Uses temporary files to ensure data integrity during parallel processing
@@ -150,6 +170,7 @@ The script includes comprehensive error handling:
 - Comprehensive Logging: Detailed header and footer information in output files
 
 ## Notes
+
 - Ensure you have permission to crawl the content of the target website.
 - The script automatically reads and respects the website's robots.txt file.
 - If robots.txt cannot be loaded, the script will continue with default settings.
