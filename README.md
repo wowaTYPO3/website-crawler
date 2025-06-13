@@ -1,18 +1,20 @@
 # Website Crawler Script
 
 ## Description
-This Bash script is designed to recursively crawl the text content of web pages and save it to a text file. It prompts the user for a URL and optionally allows setting a maximum depth for crawling. The script downloads the website and all linked pages up to the specified depth, converting the content into plain text. It features parallel processing, configurable timeouts, progress tracking, and automatic robots.txt compliance.
+This Bash script is designed to recursively crawl the text content of web pages and save it to a structured text file. It prompts the user for a URL and optionally allows setting a maximum depth for crawling. The script downloads the website and all linked pages up to the specified depth, converting the content into plain text with clear URL separation. It features parallel processing, configurable timeouts, progress tracking, and automatic robots.txt compliance.
 
 ## Features
 - Recursive website crawling with configurable depth
 - Parallel processing of HTML files
-- HTML to plain text conversion
+- Structured HTML to plain text conversion with URL headers
+- Clear separation of content by source URL
 - Configurable timeouts and download settings
 - Progress tracking during processing
 - Automatic cleanup on interruption
 - Detailed error handling and reporting
 - Automatic robots.txt compliance
 - Respects website crawling rules and restrictions
+- Thread-safe parallel processing with structured output
 
 ## System Requirements
 This script is designed for Unix-like systems (Linux, macOS). For Windows users, there are several options:
@@ -36,10 +38,47 @@ This script is designed for Unix-like systems (Linux, macOS). For Windows users,
 - Downloads and processes the website's robots.txt file
 - Respects crawling rules specified in robots.txt
 - Downloads all allowed pages of the specified domain up to the defined depth
+- Reconstructs original URLs from downloaded file paths
 - Processes HTML files in parallel for better performance
-- Extracts and saves plain text content to a text file
+- Extracts and saves plain text content with structured formatting
+- Each page's content is clearly separated with URL headers
 - The generated text file includes the domain name and the current date
 - Automatically cleans up temporary files after completion
+
+## Output Format
+The script generates a structured text file with the following format:
+```
+====================================================== 
+Website Crawl Ergebnisse für: example.com 
+Erstellt am: 2025-06-13 15:32:10 
+Maximale Tiefe: 1 
+======================================================
+
+### 
+
+[https://example.com/](https://example.com/)
+
+[Content of the main page]
+
+### 
+
+### 
+
+[https://example.com/about/](https://example.com/about/)
+
+[Content of the about page]
+
+### 
+====================================================== 
+Ende des Crawl-Ergebnisses 
+Verarbeitete Dateien: 25 ======================================================
+
+```
+
+This structure makes it easy to:
+- Identify which content belongs to which URL
+- Navigate through the extracted content
+- Analyze specific pages within the crawled website
 
 ## Prerequisites
 The script requires the following tools to be installed:
@@ -91,7 +130,7 @@ The script uses a configuration file `crawler_config.conf` for various settings:
     - Enter the URL when prompted
     - Optionally enter a custom crawling depth (press Enter for default)
 
-The output file will be saved as `[domain]_[date].txt` in the configured output directory.
+The output file will be saved as `[domain]_[date].txt` in the configured output directory with structured content formatting.
 
 ## Error Handling
 The script includes comprehensive error handling:
@@ -101,6 +140,14 @@ The script includes comprehensive error handling:
 - Handles robots.txt loading failures gracefully
 - Performs automatic cleanup on interruption
 - Provides detailed error messages
+- Thread-safe processing prevents data corruption during parallel execution
+
+## Technical Features
+- URL Reconstruction: Automatically reconstructs original URLs from downloaded file paths
+- Structured Output: Each page's content is clearly separated with URL headers
+- Thread-Safe Processing: Uses temporary files to ensure data integrity during parallel processing
+- Progress Tracking: Real-time progress indication during HTML file processing
+- Comprehensive Logging: Detailed header and footer information in output files
 
 ## Notes
 - Ensure you have permission to crawl the content of the target website.
@@ -109,3 +156,4 @@ The script includes comprehensive error handling:
 - The script automatically creates an output directory if it doesn't exist.
 - Temporary files are automatically cleaned up, even if the script is interrupted.
 - The User-Agent setting in the configuration file is used for robots.txt compliance.
+- The structured output format makes it easy to process the results programmatically or manually.
