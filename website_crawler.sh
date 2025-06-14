@@ -5,6 +5,84 @@ function check_command() {
   command -v "$1" &>/dev/null
 }
 
+# --- Funktion: Abfrage von URL-Ausschlüssen ---
+function get_url_exclusions() {
+  local exclusions=()
+  echo ""
+  echo "Möchten Sie bestimmte URL-Segmente vom Crawling ausschließen? (z.B. /en/, /fr/, /admin/)"
+  echo "Diese Funktion ist nützlich, um Sprachversionen oder bestimmte Bereiche zu ignorieren."
+  echo ""
+
+  while true; do
+    read -p "URL-Segment zum Ausschließen eingeben (leer lassen zum Beenden): " segment
+
+    # Wenn leer, beende die Schleife
+    if [[ -z "$segment" ]]; then
+      break
+    fi
+
+    # Normalisiere das Segment (füge führende und nachgestellte Slashes hinzu, falls nötig)
+    if [[ ! "$segment" =~ ^/ ]]; then
+      segment="/$segment"
+    fi
+    if [[ ! "$segment" =~ /$ ]]; then
+      segment="$segment/"
+    fi
+
+    exclusions+=("$segment")
+    echo "Hinzugefügt: $segment"
+  done
+
+  # Zeige zusammengefasste Ausschlüsse an
+  if [[ ${#exclusions[@]} -gt 0 ]]; then
+    echo ""
+    echo "Folgende URL-Segmente werden ausgeschlossen:"
+    for exclusion in "${exclusions[@]}"; do
+      echo "  - $exclusion"
+    done
+    echo ""
+  fi
+
+  # Exportiere als globale Variable
+  URL_EXCLUSIONS=("${exclusions[@]}")
+}
+
+# --- Funktion: Prüfe, ob URL ausgeschlossen werden soll ---
+function is_url_excluded() {
+  local url=$1
+
+  # Wenn keine Ausschlüsse definiert sind, ist nichts ausgeschlossen
+  if [[ ${#URL_EXCLUSIONS[@]} -eq 0 ]]; then
+    return 1
+  fi
+
+  # Prüfe jedes Ausschlussmuster
+  for exclusion in "${URL_EXCLUSIONS[@]}"; do
+    if [[ "$url" == *"$exclusion"* ]]; then
+      return 0  # URL ist ausgeschlossen
+    fi
+  done
+
+  return 1  # URL ist nicht ausgeschlossen
+}
+
+# --- Funktion: Erstelle Reject-Regex für wget ---
+function build_reject_regex() {
+  if [[ ${#URL_EXCLUSIONS[@]} -eq 0 ]]; then
+    return
+  fi
+
+  local regex_parts=()
+  for exclusion in "${URL_EXCLUSIONS[@]}"; do
+    # Escape spezielle Regex-Zeichen
+    local escaped_exclusion=$(echo "$exclusion" | sed 's/[.*+?^${}()|[\]\\]/\\&/g')
+    regex_parts+=("$escaped_exclusion")
+  done
+
+  # Kombiniere alle Teile mit OR-Operator
+  EXCLUSION_REGEX=$(IFS="|"; echo "${regex_parts[*]}")
+}
+
 # --- Funktion: Zeige Fortschritt an ---
 function show_progress() {
   local current=$1
@@ -71,6 +149,12 @@ function process_html_file_structured() {
 
   # Rekonstruiere die ursprüngliche URL
   local original_url=$(reconstruct_url "$file" "$download_dir")
+
+  # Prüfe, ob URL ausgeschlossen werden soll
+  if is_url_excluded "$original_url"; then
+    echo "Überspringe ausgeschlossene URL: $original_url"
+    return 0
+  fi
 
   # Schreibe strukturierte Header mit Thread-Safety
   local temp_file=$(mktemp)
@@ -198,6 +282,9 @@ read -p "Gib die URL an: " URL
 read -p "Gib die maximale Tiefe ein (Standard: $MAX_DEPTH): " user_depth
 MAX_DEPTH=${user_depth:-$MAX_DEPTH}
 
+# --- URL-Ausschlüsse abfragen ---
+get_url_exclusions
+
 # --- URL auf Protokoll prüfen ---
 if ! [[ $URL =~ ^https?:// ]]; then
   URL="http://$URL"
@@ -243,6 +330,18 @@ if [ -f "$download_dir/robots_rules.txt" ] && [ -s "$download_dir/robots_rules.t
     fi
 fi
 
+# Füge URL-Ausschlüsse hinzu, falls vorhanden
+build_reject_regex
+if [[ -n "$EXCLUSION_REGEX" ]]; then
+    if [[ "$wget_cmd" == *"--reject-regex="* ]]; then
+        # Kombiniere mit bestehender Reject-Regex
+        wget_cmd=$(echo "$wget_cmd" | sed "s/--reject-regex=\"\([^\"]*\)\"/--reject-regex=\"\1|$EXCLUSION_REGEX\"/")
+    else
+        # Füge neue Reject-Regex hinzu
+        wget_cmd="$wget_cmd --reject-regex=\"$EXCLUSION_REGEX\""
+    fi
+fi
+
 # Führe wget aus
 if eval "$wget_cmd \"$URL\""; then
     echo "Download erfolgreich abgeschlossen."
@@ -266,6 +365,9 @@ echo -e "\nVerarbeite HTML-Dateien mit pandoc..."
   echo "Website Crawl Ergebnisse für: $base_domain"
   echo "Erstellt am: $(date '+%Y-%m-%d %H:%M:%S')"
   echo "Maximale Tiefe: $MAX_DEPTH"
+  if [[ ${#URL_EXCLUSIONS[@]} -gt 0 ]]; then
+    echo "Ausgeschlossene URL-Segmente: ${URL_EXCLUSIONS[*]}"
+  fi
   echo "======================================================"
   echo ""
 } > "$output_file"
