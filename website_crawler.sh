@@ -279,8 +279,16 @@ load_config
 
 # --- URL und Tiefe abfragen ---
 read -p "Gib die URL an: " URL
-read -p "Gib die maximale Tiefe ein (Standard: $MAX_DEPTH): " user_depth
-MAX_DEPTH=${user_depth:-$MAX_DEPTH}
+read -p "Nur diese URL crawlen (ohne Links zu folgen)? (j/n, Standard: n): " crawl_single
+if [[ "$crawl_single" =~ ^[jJ]$ ]]; then
+  MAX_DEPTH=0
+  RECURSIVE_MODE=false
+  echo "Modus: Nur einzelne URL wird gecrawlt"
+else
+  read -p "Gib die maximale Tiefe ein (Standard: $MAX_DEPTH): " user_depth
+  MAX_DEPTH=${user_depth:-$MAX_DEPTH}
+  RECURSIVE_MODE=true
+fi
 
 # --- URL-Ausschlüsse abfragen ---
 get_url_exclusions
@@ -320,7 +328,12 @@ load_robots_txt "$base_domain"
 echo "Lade Inhalte herunter..."
 
 # Baue wget-Befehl auf
-wget_cmd="wget --recursive --level=\"$MAX_DEPTH\" --convert-links --reject=\"$REJECT_PATTERNS\" --no-parent --html-extension --restrict-file-names=windows --directory-prefix=\"$download_dir\" --user-agent=\"$USER_AGENT\" --wait=\"$WAIT_TIME\" --random-wait=\"$RANDOM_WAIT\" --timeout=\"$TIMEOUT\" --connect-timeout=\"$CONNECT_TIMEOUT\" --progress=dot:giga"
+if [[ "$RECURSIVE_MODE" == true ]]; then
+  wget_cmd="wget --recursive --level=\"$MAX_DEPTH\" --convert-links --reject=\"$REJECT_PATTERNS\" --no-parent --html-extension --restrict-file-names=windows --directory-prefix=\"$download_dir\" --user-agent=\"$USER_AGENT\" --wait=\"$WAIT_TIME\" --random-wait=\"$RANDOM_WAIT\" --timeout=\"$TIMEOUT\" --connect-timeout=\"$CONNECT_TIMEOUT\" --progress=dot:giga"
+else
+  # Nicht-rekursiver Modus: nur die angegebene URL herunterladen
+  wget_cmd="wget --convert-links --reject=\"$REJECT_PATTERNS\" --html-extension --restrict-file-names=windows --directory-prefix=\"$download_dir\" --user-agent=\"$USER_AGENT\" --timeout=\"$TIMEOUT\" --connect-timeout=\"$CONNECT_TIMEOUT\" --progress=dot:giga"
+fi
 
 # Füge robots.txt-Regeln hinzu, falls vorhanden
 if [ -f "$download_dir/robots_rules.txt" ] && [ -s "$download_dir/robots_rules.txt" ]; then
@@ -364,7 +377,11 @@ echo -e "\nVerarbeite HTML-Dateien mit pandoc..."
   echo "======================================================"
   echo "Website Crawl Ergebnisse für: $base_domain"
   echo "Erstellt am: $(date '+%Y-%m-%d %H:%M:%S')"
-  echo "Maximale Tiefe: $MAX_DEPTH"
+  if [[ "$RECURSIVE_MODE" == true ]]; then
+    echo "Modus: Rekursiv (Maximale Tiefe: $MAX_DEPTH)"
+  else
+    echo "Modus: Einzelne URL (keine Links werden gefolgt)"
+  fi
   if [[ ${#URL_EXCLUSIONS[@]} -gt 0 ]]; then
     echo "Ausgeschlossene URL-Segmente: ${URL_EXCLUSIONS[*]}"
   fi
